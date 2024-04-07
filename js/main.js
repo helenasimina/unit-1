@@ -3,8 +3,8 @@ window.onload = setMap();
 //set up choropleth map
 function setMap(){
     //map frame dimensions
-    var width = 960,
-        height = 460;
+    var width = 700,
+        height = 500;
 
     //create new svg container for the map
     var map = d3.select("body")
@@ -15,10 +15,10 @@ function setMap(){
 
     //create Albers equal area conic projection centered on France
     var projection = d3.geoAlbers()
-        .center([-13.16, 43.25])
+        .center([-8.5, 44.8])
         .rotate([81, 0, 0])
         .parallels([25.20, 45.5])
-        .scale(2216.60)
+        .scale(5300.60)
         .translate([width / 2, height / 2]);
 
     var path = d3.geoPath()
@@ -49,12 +49,10 @@ function setMap(){
 
         //add France regions to map
         var railtracks = map.selectAll(".railtracks")
-            .data(RailTrain)
+            .data(RailTrain.features)
             .enter()
             .append("path")
-            .attr("class", function(d){
-                return "railtracks " + d.properties.adm1_code;
-            })
+            .attr("class", "railtracks")
             .attr("d", path);
 
     };
