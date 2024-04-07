@@ -27,7 +27,7 @@ function setMap(){
     //use Promise.all to parallelize asynchronous data loading
     var promises = [];    
     promises.push(d3.csv("data/tractdatawtrains.csv")); //load attributes from csv    
-    promises.push(d3.json("data/tracts.topojson")); //load background spatial data    
+    promises.push(d3.json("data/nodatatracts.topojson")); //load background spatial data    
     promises.push(d3.json("data/traintrackswi.topojson")); //load choropleth spatial data    
     Promise.all(promises).then(callback);
 
@@ -39,7 +39,7 @@ function setMap(){
         console.log(wisconsintracts);
         console.log(railroads);   
         //translate europe TopoJSON
-        var Wisconsin = topojson.feature(wisconsintracts, wisconsintracts.objects.simplifiedtable),
+        var Wisconsin = topojson.feature(wisconsintracts, wisconsintracts.objects.nodatatracts),
             RailTrain = topojson.feature(railroads, railroads.objects.traintrackswi);
         //add Europe countries to map
         var witracts = map.append("path")
