@@ -12,9 +12,15 @@ function setMap(){
     function callback(data){    
         csvData = data[0];    
         wisconsintracts = data[1];    
-        railroads = data[2];
+        railroads = data[2];        
         console.log(csvData);
         console.log(wisconsintracts);
-        console.log(railroads);    
+        console.log(railroads);   
+        var Wisconsin = topojson.min.feature(wisconsintracts, wisconsintracts.objects.Wisconsin),
+            RailTrain = topojson.min.feature(railroads, railroads.objects.RailTrain);
+        //examine the results
+        console.log(Wisconsin);
+        console.log(RailTrain);
+
     };
 };
