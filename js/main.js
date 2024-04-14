@@ -44,7 +44,7 @@ function setMap(){
         
         
     // Iterate over each feature in the TopoJSON data
-        wisconsintracts.objects.nodatatracts.geometries.forEach(function(tract) {
+    wisconsintracts.objects.nodatatracts.geometries.forEach(function(tract) {
         // Find the corresponding entry in the CSV data based on GEOID
         var csvTract = csvData.find(function(csvEntry) {
             return csvEntry.GEOID === tract.properties.GEOID;
