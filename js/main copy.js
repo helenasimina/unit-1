@@ -1,9 +1,3 @@
-(function(){
-
-    //pseudo-global variables
-    var attrArray = ["mean_totin", "mean_cars", "mean_cars", "sum_carshz", "mean_trkdm", "Point_Coun", "Percent Below Poverty Line", "Total Population", "White-Alone", "Black-Alone"]; // List of attributes to join from CSV
-    var expressed = attrArray[0]; //initial attribute
-    
 window.onload = setMap();
 
 //set up choropleth map
@@ -42,23 +36,26 @@ function setMap(){
         wisconsintracts = data[1];    
         railroads = data[2];   
         
-        
-    // Iterate over each feature in the TopoJSON data
-        wisconsintracts.objects.nodatatracts.geometries.forEach(function(tract) {
-        // Find the corresponding entry in the CSV data based on GEOID
-        var csvTract = csvData.find(function(csvEntry) {
-            return csvEntry.GEOID === tract.properties.GEOID;
-        });
-
-        // If a matching entry is found, add the attributes to the TopoJSON properties
-        if (csvTract) {
-            attrArray.forEach(function(attr) {
-                var val = parseFloat(csvTract[attr]); // Get the attribute value from CSV
-                tract.properties[attr] = val; // Add the attribute to TopoJSON properties
-            });
+        var attrArray = ["mean_totin", "mean_cars", "mean_cars", "sum_carshz", "mean_trkdm", "Point_Coun", "Percent Below Poverty Line", "Total Population", "White-Alone", "Black-Alone"]; // List the attributes you want to join from CSV
+        for (var i = 0; i < csvData.length; i++) {
+            var csvTract = csvData[i]; // The current tract from CSV
+            var csvKey = csvTract.GEOID; // Assuming tract_id is the key in your CSV representing each tract
+    
+            // Loop through GeoJSON tracts to find the correct tract
+            for (var j = 0; j < wisconsintracts.objects.nodatatracts; j++) {
+                var geojsonProps = wisconsintracts.features[j].properties; // The current tract GeoJSON properties
+                var geojsonKey = geojsonProps.GEOID; // Assuming "GEOID" is the key in your GeoJSON representing each tract
+            
+                // Where primary keys match, transfer CSV data to GeoJSON properties object
+                if (geojsonKey === csvKey) {
+                    // Assign all attributes and values
+                    attrArray.forEach(function(attr) {
+                        var val = parseFloat(csvTract[attr]); // Get CSV attribute value
+                        geojsonProps[attr] = val; // Assign attribute and value to GeoJSON properties
+                    });
+                }
+            }
         }
-    });
-   
         console.log(csvData);
         console.log(wisconsintracts);
         console.log(railroads);   
@@ -81,4 +78,3 @@ function setMap(){
 
     };
 };
-})();
