@@ -2,7 +2,7 @@
 
     //pseudo-global variables
     var attrArray = ["mean_totin", "mean_cars", "mean_cars", "sum_carshz", "mean_trkdm", "Point_Coun", "Percent Below Poverty Line", "Total Population", "White-Alone", "Black-Alone"]; // List of attributes to join from CSV
-    var expressed = attrArray[0]; //initial attribute
+    var expressed = attrArray[7]; //initial attribute
     
 window.onload = setMap();
 
@@ -67,10 +67,10 @@ function setMap(){
             RailTrain = topojson.feature(railroads, railroads.objects.traintrackswi);
         //add Europe countries to map
         var witracts = map.append("path")
-            .datum(Wisconsin)
-            .attr("class", "witracts")
-            .attr("d", path);
-
+        .datum(Wisconsin)
+        .attr("class", "witracts")
+        .attr("d", path);
+        
         //add France regions to map
         var railtracks = map.selectAll(".railtracks")
             .data(RailTrain.features)
@@ -81,4 +81,64 @@ function setMap(){
 
     };
 };
+
+//function to create color scale generator
+function makeColorScale(data){
+    var colorClasses = [
+        "#D4B9DA",
+        "#C994C7",
+        "#DF65B0",
+        "#DD1C77",
+        "#980043"
+    ];
+
+    //create color scale generator
+    var colorScale = d3.scaleThreshold()
+        .range(colorClasses);
+
+    //build array of all values of the expressed attribute
+    var domainArray = [];
+    for (var i=0; i<data.length; i++){
+        var val = parseFloat(data[i][expressed]);
+        domainArray.push(val);
+    };
+
+    //cluster data using ckmeans clustering algorithm to create natural breaks
+    var clusters = ss.ckmeans(domainArray, 5);
+    //reset domain array to cluster minimums
+    domainArray = clusters.map(function(d){
+        return d3.min(d);
+    });
+    //remove first value from domain array to create class breakpoints
+    domainArray.shift();
+
+    //assign array of last 4 cluster minimums as domain
+    colorScale.domain(domainArray);
+
+    return colorScale;
+};
+
+function setEnumerationUnits(wisconsintracts,map,path,colorScale){    
+    //add France regions to map   
+
+    var newunit = map.selectAll(".witracts")        
+        .data(wisconsintracts)        
+        .enter()        
+        .append("path")        
+        .attr("class", function(d){            
+            return "witracts " + d.properties.GEOID;        
+        })        
+        .attr("d", path)        
+            .style("fill", function(d){            
+                var value = d.properties[expressed];            
+                if(value) {                
+                    return colorScale(d.properties[expressed]);            
+                } else {                
+                    return "#ccc";            
+                }    
+        });
+    }
+
+    
+
 })();
