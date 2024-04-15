@@ -83,7 +83,7 @@ function setMap(){
 };
 
 //function to create color scale generator
-function makeColorScale(data){
+function makeColorScale(wisconsintracts){
     var colorClasses = [
         "#D4B9DA",
         "#C994C7",
@@ -98,10 +98,14 @@ function makeColorScale(data){
 
     //build array of all values of the expressed attribute
     var domainArray = [];
-    for (var i=0; i<data.length; i++){
-        var val = parseFloat(data[i][expressed]);
+    wisconsintracts.forEach(function(d) {
+        var val = parseFloat(d.properties[expressed]);
         domainArray.push(val);
-    };
+        console.log("Pushed value:", val); // Log the value being pushed into the domainArray
+    });
+
+    // Log the domainArray before clustering
+    console.log("Domain array before clustering:", domainArray);
 
     //cluster data using ckmeans clustering algorithm to create natural breaks
     var clusters = ss.ckmeans(domainArray, 5);
@@ -112,14 +116,22 @@ function makeColorScale(data){
     //remove first value from domain array to create class breakpoints
     domainArray.shift();
 
+    // Log the domainArray after clustering
+    console.log("Domain array after clustering:", domainArray);
+
     //assign array of last 4 cluster minimums as domain
     colorScale.domain(domainArray);
+
+    // Log the final domain set for the color scale
+    console.log("Color scale domain:", colorScale.domain());
 
     return colorScale;
 };
 
+
 function setEnumerationUnits(wisconsintracts,map,path,colorScale){    
-    //add France regions to map   
+    //add wi tracts to map   
+    console.log("setEnumerationUnits function called"); // Check if the function is called
 
     var newunit = map.selectAll(".witracts")        
         .data(wisconsintracts)        
@@ -130,15 +142,17 @@ function setEnumerationUnits(wisconsintracts,map,path,colorScale){
         })        
         .attr("d", path)        
             .style("fill", function(d){            
-                var value = d.properties[expressed];            
+                var value = d.properties["Total Population"];            
                 if(value) {                
                     return colorScale(d.properties[expressed]);            
                 } else {                
                     return "#ccc";            
                 }    
         });
-    }
-
     
+    console.log("Census tracts appended to map:", newunit);
+    }
+    
+
 
 })();
