@@ -1,5 +1,26 @@
+.map {
+    border: medium solid #999;
+    margin: 10px 0 0 20px;
+}
 
+.chart {
+    background-color: rgba(128,128,128,.2);
+    border: medium solid #999;
+    float: right;
+    margin: 10px 20px 0 0;
+}
+.witracts{
+    stroke: #221f1f;
+    stroke-width: 0.1px;
+    stroke-linecap: round;
+}
 .railtracks {
     stroke: brown;
     stroke-width: 1px;
+}
+
+.USBoundaries {
+    fill: grey;
+    stroke: black;
+    stroke-width:1px;
 }
