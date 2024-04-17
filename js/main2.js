@@ -2,7 +2,7 @@
 
 	//pseudo-global variables
 	var attrArray = ["mean_totin", "mean_cars", "mean_cars", "sum_carshz", "mean_trkdm", "Point_Coun", "Percent Below Poverty Line", "Total Population", "White-Alone", "Black-Alone"]; // List of attributes to join from CSV
-	var expressed = attrArray[3]; //initial attribute
+	var expressed = attrArray[5]; //initial attribute
 
 	window.onload = setMap();
 
@@ -173,33 +173,117 @@
 			});
 		console.log("Census tracts appended to map:", newunit); // Check if census tracts are appended
 	}
-
-	function setChart(csvData, colorScale){
+	function setChart(csvData, colorScale) {
 		//chart frame dimensions
-		var chartWidth = window.innerWidth * 0.425,
-			chartHeight = 460;
+		var chartWidth = window.innerWidth * 0.405,
+			chartHeight = 500;
+		
+		// Filter the data to exclude points with zero values
+		var filteredData = csvData.filter(function(d) {
+			return d.Point_Coun > 0; // Adjust this condition based on your data structure
+		});
 	
-		//create a second svg element to hold the bar chart
+		// Sort the filtered data array based on the expressed attribute
+		filteredData.sort(function(a, b) {
+			// Check if either 'a' or 'b' is zero
+			if (a[expressed] === 0 && b[expressed] === 0) {
+				// If both 'a' and 'b' are zero, maintain their relative order
+				return 0;
+			} else if (a[expressed] === 0) {
+				// If 'a' is zero and 'b' is not, move 'a' to the end of the sorted array
+				return 1;
+			} else if (b[expressed] === 0) {
+				// If 'b' is zero and 'a' is not, move 'b' to the end of the sorted array
+				return -1;
+			} else {
+				// If neither 'a' nor 'b' is zero, sort based on their numeric values
+				return a[expressed] - b[expressed];
+			}
+		});
+	
+		// Create a linear scale for the y-axis
+		var yScale = d3.scaleLinear()
+			.range([chartHeight, 0]) // Note the reversed range to position bars from top to bottom
+			.domain([0, d3.max(filteredData, function(d) { return parseFloat(d[expressed]); })]);
+	
+		// Create the chart SVG element
 		var chart = d3.select("body")
 			.append("svg")
 			.attr("width", chartWidth)
 			.attr("height", chartHeight)
 			.attr("class", "chart");
-		 //set bars for each province
+	
+		// Append bars to the chart
 		var bars = chart.selectAll(".bars")
-			.data(csvData)
+			.data(filteredData)
 			.enter()
 			.append("rect")
-			.attr("class", function(d){
-				return "bars " + d.adm1_code;})
-		 	.attr("width", chartWidth / csvData.length - 1)
-		 	.attr("x", function(d, i){
-				return i * (chartWidth / csvData.length);
-		 	})
-			.attr("height", 460)
-			.attr("y", 0);
+			.attr("class", function(d) {
+				return "bars " + d.GEOID;
+			})
+			.attr("width", Math.max(chartWidth / filteredData.length - 1, 0))
+			.attr("x", function(d, i) {
+				return i * (chartWidth / filteredData.length);
+			})
+			.attr("height", function(d) {
+				return chartHeight - yScale(parseFloat(d[expressed]));
+			})
+			.attr("y", function(d) {
+				return yScale(parseFloat(d[expressed])); // Adjusted to use yScale for positioning
+			})
+			.style("fill", function(d) {
+				return colorScale(d[expressed]);
+			});
 		
-	};
+		var uniqueData = filteredData.filter(function(d, i, self) {
+				return i === self.findIndex(function(t) {
+					return t[expressed] === d[expressed];
+				});
+			});
+
+		var averageX = {};
+		
+		uniqueData.forEach(function(d) {
+				var height = parseFloat(d[expressed]);
+				if (!averageX[height]) {
+					averageX[height] = [];
+				}
+				averageX[height].push(filteredData.indexOf(d) * (chartWidth / filteredData.length));
+			});
+			for (var height in averageX) {
+				averageX[height] = averageX[height].reduce((a, b) => a + b, 0) / averageX[height].length;
+			}
+			
+			// Append numbers to the top of each bar using unique data and the calculated average x-position
+
+		
+		var numbers = chart.selectAll(".numbers")
+			.data(uniqueData)
+			.enter()
+			.append("text")
+			.attr("class", function(d) {
+				return "numbers " + d.GEOID;
+			})
+			.attr("text-anchor", "middle")
+			.attr("x", function(d) {
+				return averageX[parseFloat(d[expressed])];
+			})
+			.attr("y", function(d) {
+				return yScale(parseFloat(d[expressed])) - 5; // Adjusted positioning to place the numbers slightly above the bars
+			})
+			.text(function(d) {
+				return d[expressed];
+			});
+		
+		
+		
+		var chartTitle = chart.append("text")
+			.attr("x", 20)
+			.attr("y", 40)
+			.attr("class", "chartTitle")
+			.text("Total Train Derailments per Census Tract in 2020");
+	}
+	
 
 })();
 
