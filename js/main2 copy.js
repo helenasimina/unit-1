@@ -39,17 +39,17 @@
 
         function callback(data) {
             csvData = data[0];
-            var wisconsintracts = data[1];
+            wisconsintracts = data[1]; // Use 'var' to make it a local variable
             USBoundaries = data[3];
             railroads = data[2];
-
+        
             // Iterate over each feature in the TopoJSON data
             wisconsintracts.objects.nodatatracts.geometries.forEach(function (tract) {
                 // Find the corresponding entry in the CSV data based on GEOID
                 var csvTract = csvData.find(function (csvEntry) {
                     return csvEntry.GEOID === tract.properties.GEOID;
                 });
-
+        
                 // If a matching entry is found, add the attributes to the TopoJSON properties
                 if (csvTract) {
                     attrArray.forEach(function (attr) {
@@ -58,32 +58,34 @@
                     });
                 }
             });
-
+        
             //translate europe TopoJSON
             var Wisconsin = topojson.feature(wisconsintracts, wisconsintracts.objects.nodatatracts).features,
                 RailTrain = topojson.feature(railroads, railroads.objects.traintrackswi),
                 Boundaries = topojson.feature(USBoundaries, USBoundaries.objects.US_State_Boundaries);
-
+        
             colorScale = makeColorScale(Wisconsin);
-
+        
             var USBoundaries = map.selectAll(".USBoundaries")
                 .data(Boundaries.features)
                 .enter()
                 .append("path")
                 .attr("class", "USBoundaries")
                 .attr("d", path);
-
+        
             var railtracks = map.selectAll(".railtracks")
                 .data(RailTrain.features)
                 .enter()
                 .append("path")
                 .attr("class", "railtracks")
                 .attr("d", path);
-
+        
             setEnumerationUnits(Wisconsin, map, path, colorScale);
             setChart(csvData, colorScale);
-            createDropdown(); // Move this function call hered
+            createDropdown(); // Move this function call here
+            console.log("here are:", wisconsintracts);
         }
+        
     };
 
     // Function to create dropdown menu
@@ -113,26 +115,33 @@
 
     // Function to change attribute
     function changeAttribute(attribute, csvData) {
-        //change the expressed attribute
+        // Change the expressed attribute
         expressed = attribute;
+        console.log("Expressed attribute in changeAttribute:", expressed); // Log the current expressed attribute
 
-        //recreate the color scale
+    
+        // Recreate the color scale
         var colorScale = makeColorScale(csvData);
-
-        //recolor enumeration units
-        var newunit = d3.selectAll(".witracts").style("fill", function (d) {
-            var value = d.properties[expressed];
-            if (value) {
-                return colorScale(d.properties[expressed]);
-            } else {
-                return "#ccc";
-            }
-        });
-		
+    
+        // Recolor enumeration units
+        if (colorScale) { // Check if colorScale is defined
+            var newunit = d3.selectAll(".witracts").style("fill", function (d) {
+                var value = d.properties[expressed];
+                if (value) {
+                    return colorScale(d.properties[expressed]);
+                } else {
+                    return "#ccc";
+                }
+            });
+        } else {
+            console.error("Color scale is undefined."); // Log an error if colorScale is undefined
+        }
     }
-
-    // Function to create color scale generator
+    
     function makeColorScale(witractsData) {
+        console.log("witractsData:", witractsData); // Log the data array for debugging
+        console.log("Expressed attribute:", expressed); // Log the current expressed attribute
+    
         var colorClasses = [
             "#fef0d9",
             "#fdcc8a",
@@ -140,42 +149,54 @@
             "#e34a33",
             "#b30000"
         ];
-
-        //create color scale generator
+    
+        // Create color scale generator
         var colorScale = d3.scaleThreshold()
             .range(colorClasses);
-
-        //build array of all values of the expressed attribute
+    
+        // Build array of all values of the expressed attribute
         var domainArray = [];
         witractsData.forEach(function (d) {
-            var val = parseFloat(d.properties[expressed]);
-            domainArray.push(val);
-            console.log("Pushed value:", val); // Log the value being pushed into the domainArray
+            // Check if the attribute exists for the feature
+            if (d.properties && d.properties[expressed] !== undefined) {
+                var val = parseFloat(d.properties[expressed]);
+                // Check if the value is NaN
+                if (isNaN(val)) {
+                    // Replace NaN values with zero
+                    val = 0.0;
+                }
+                domainArray.push(val);
+                console.log("Pushed value:", val); // Log the value being pushed into the domainArray
+            }
         });
-
-        // Log the domainArray before clustering
-        console.log("Domain array before clustering:", domainArray);
-
-        //cluster data using ckmeans clustering algorithm to create natural breaks
-        var clusters = ss.ckmeans(domainArray, 5);
-        //reset domain array to cluster minimums
+        
+        
+        
+    
+    
+        console.log("Domain Array:", domainArray); // Log the domainArray for debugging
+    
+        if (domainArray.length === 0) {
+            console.error("Domain Array is empty. No valid attribute values found.");
+            return; // Exit the function early if domainArray is empty
+        }
+    
+        // Cluster data using ckmeans clustering algorithm to create natural breaks
+        var numClasses = Math.min(colorClasses.length + 1, domainArray.length); // Ensure number of classes does not exceed number of data values
+        var clusters = ss.ckmeans(domainArray, numClasses);
+        // Reset domain array to cluster minimums
         domainArray = clusters.map(function (d) {
             return d3.min(d);
         });
-        //remove first value from domain array to create class breakpoints
+        // Remove first value from domain array to create class breakpoints
         domainArray.shift();
-
-        // Log the domainArray after clustering
-        console.log("Domain array after clustering:", domainArray);
-
-        //assign array of last 4 cluster minimums as domain
+    
+        // Assign array of last 4 cluster minimums as domain
         colorScale.domain(domainArray);
-
-        // Log the final domain set for the color scale
-        console.log("Color scale domain:", colorScale.domain());
-
+    
         return colorScale;
-    };
+    }
+    
 
     // Function to add Wisconsin tracts to map with fill color
     function setEnumerationUnits(wisconsintracts, map, path, colorScale) {
@@ -189,7 +210,7 @@
             })
             .attr("d", path)
             .style("fill", function (d) {
-                var value = d.properties[expressed];
+                var value = parseFloat(d.properties[expressed]);;
                 if (value) {
                     return colorScale(d.properties[expressed]);
                 } else {
