@@ -1,18 +1,17 @@
 (function () {
-
     //pseudo-global variables
     var attrArray = ["mean_totin", "mean_cars", "mean_cars", "sum_carshz", "mean_trkdm", "Point_Coun", "Percent Below Poverty Line", "Total Population", "White-Alone", "Black-Alone"]; // List of attributes to join from CSV
     var expressed = attrArray[5]; //initial attribute
 
     window.onload = setMap();
 
-    //set up choropleth map
+    // set up choropleth map
     function setMap() {
         //map frame dimensions
         var width = window.innerWidth * 0.5,
             height = 500;
 
-        //create new svg container for the map
+        // create new svg container for the map
         var map = d3.select("body")
             .append("svg")
             .attr("class", "map")
@@ -40,10 +39,9 @@
 
         function callback(data) {
             csvData = data[0];
-            wisconsintracts = data[1];
-            USBoundaries = data[3]
+            var wisconsintracts = data[1];
+            USBoundaries = data[3];
             railroads = data[2];
-
 
             // Iterate over each feature in the TopoJSON data
             wisconsintracts.objects.nodatatracts.geometries.forEach(function (tract) {
@@ -61,25 +59,12 @@
                 }
             });
 
-            console.log(csvData);
-            console.log(wisconsintracts);
-            console.log(railroads);
             //translate europe TopoJSON
-            var Wisconsin = topojson.feature(wisconsintracts, wisconsintracts.objects.nodatatracts).features,////
-                RailTrain = topojson.feature(railroads, railroads.objects.traintrackswi)
+            var Wisconsin = topojson.feature(wisconsintracts, wisconsintracts.objects.nodatatracts).features,
+                RailTrain = topojson.feature(railroads, railroads.objects.traintrackswi),
                 Boundaries = topojson.feature(USBoundaries, USBoundaries.objects.US_State_Boundaries);
-            //add Europe countries to map
 
-            // Add Wisconsin tracts to map with fill color
-            // var witracts = map.selectAll(".witracts") ////
-            // 	.data(Wisconsin.features)
-            // 	.enter()
-            // 	.append("path")
-            // 	.attr("class", "witracts")
-            // 	.attr("d", path);
-
-
-            colorScale = makeColorScale(Wisconsin);////
+            colorScale = makeColorScale(Wisconsin);
 
             var USBoundaries = map.selectAll(".USBoundaries")
                 .data(Boundaries.features)
@@ -88,7 +73,6 @@
                 .attr("class", "USBoundaries")
                 .attr("d", path);
 
-            //add France regions to map
             var railtracks = map.selectAll(".railtracks")
                 .data(RailTrain.features)
                 .enter()
@@ -96,16 +80,58 @@
                 .attr("class", "railtracks")
                 .attr("d", path);
 
-            // Call the makeColorScale function with the data array
-            var colorScale = makeColorScale(Wisconsin);////
-
-            // Call the setEnumerationUnits function
-            setEnumerationUnits(Wisconsin, map, path, colorScale);////
+            setEnumerationUnits(Wisconsin, map, path, colorScale);
             setChart(csvData, colorScale);
+            createDropdown(); // Move this function call hered
         }
     };
 
-    //function to create color scale generator
+    // Function to create dropdown menu
+    function createDropdown() {
+        //add select element
+        var dropdown = d3.select("body")
+            .append("select")
+            .attr("class", "dropdown")
+            .on("change", function () {
+                changeAttribute(this.value, csvData)
+            });
+
+        //add initial option
+        var titleOption = dropdown.append("option")
+            .attr("class", "titleOption")
+            .attr("disabled", "true")
+            .text("Select Data");
+
+        //add attribute name options
+        var attrOptions = dropdown.selectAll("attrOptions")
+            .data(attrArray)
+            .enter()
+            .append("option")
+            .attr("value", function (d) { return d; })
+            .text(function (d) { return d; });
+    };
+
+    // Function to change attribute
+    function changeAttribute(attribute, csvData) {
+        //change the expressed attribute
+        expressed = attribute;
+
+        //recreate the color scale
+        var colorScale = makeColorScale(csvData);
+
+        //recolor enumeration units
+        var newunit = d3.selectAll(".witracts").style("fill", function (d) {
+            var value = d.properties[expressed];
+            if (value) {
+                return colorScale(d.properties[expressed]);
+            } else {
+                return "#ccc";
+            }
+        });
+		
+    }
+
+    // Function to create color scale generator
     function makeColorScale(witractsData) {
         var colorClasses = [
             "#fef0d9",
@@ -114,7 +140,6 @@
             "#e34a33",
             "#b30000"
         ];
-
 
         //create color scale generator
         var colorScale = d3.scaleThreshold()
@@ -152,9 +177,9 @@
         return colorScale;
     };
 
+    // Function to add Wisconsin tracts to map with fill color
     function setEnumerationUnits(wisconsintracts, map, path, colorScale) {
         //add wi tracts to map   
-
         var newunit = map.selectAll(".witracts")
             .data(wisconsintracts)
             .enter()
@@ -173,30 +198,32 @@
             });
         console.log("Census tracts appended to map:", newunit); // Check if census tracts are appended
     }
+
+    // Function to create the chart
     function setChart(csvData, colorScale) {
         //chart frame dimensions
         var chartWidth = window.innerWidth * 0.405,
             chartHeight = 500;
 
         // Define margins for the chart
-        var margin = {top: 20, right: 20, bottom: 30, left: 40},
+        var margin = { top: 20, right: 20, bottom: 30, left: 40 },
             width = chartWidth - margin.left - margin.right,
             height = chartHeight - margin.top - margin.bottom;
 
         // Filter the data to exclude points with zero values
-        var filteredData = csvData.filter(function(d) {
+        var filteredData = csvData.filter(function (d) {
             return d.Point_Coun > 0; // Adjust this condition based on your data structure
         });
 
         // Sort the filtered data array based on the expressed attribute in descending order
-        filteredData.sort(function(a, b) {
+        filteredData.sort(function (a, b) {
             return b[expressed] - a[expressed];
         });
 
         // Create a linear scale for the y-axis
         var yScale = d3.scaleLinear()
             .range([height, 0]) // Note the reversed range to position bars from top to bottom
-            .domain([0, d3.max(filteredData, function(d) { return parseFloat(d[expressed]); })]);
+            .domain([0, d3.max(filteredData, function (d) { return parseFloat(d[expressed]); })]);
 
         // Create the chart SVG element
         var chart = d3.select("body")
@@ -212,20 +239,20 @@
             .data(filteredData)
             .enter()
             .append("rect")
-            .attr("class", function(d) {
+            .attr("class", function (d) {
                 return "bars " + d.GEOID;
             })
             .attr("width", Math.max(width / filteredData.length - 1, 0))
-            .attr("x", function(d, i) {
+            .attr("x", function (d, i) {
                 return i * (width / filteredData.length);
             })
-            .attr("height", function(d) {
+            .attr("height", function (d) {
                 return height - yScale(parseFloat(d[expressed]));
             })
-            .attr("y", function(d) {
+            .attr("y", function (d) {
                 return yScale(parseFloat(d[expressed])); // Adjusted to use yScale for positioning
             })
-            .style("fill", function(d) {
+            .style("fill", function (d) {
                 return colorScale(d[expressed]);
             });
 
