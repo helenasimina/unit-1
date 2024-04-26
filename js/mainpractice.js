@@ -137,12 +137,15 @@ var yScale = d3.scaleLinear()
     
         // Recolor enumeration units
         if (colorScale) { // Check if colorScale is defined
-            var newunit = d3.selectAll(".witracts").style("fill", function (d) {
-                var value = d.properties[expressed];
-                if (value) {
-                    return colorScale(d.properties[expressed]);
-                } else {
-                    return "#ccc";
+            var newunit = d3.selectAll(".witracts")
+                .transition()
+                .duration(1000)
+                .style("fill", function (d) {
+                    var value = d.properties[expressed];
+                    if (value) {
+                        return colorScale(d.properties[expressed]);
+                    } else {
+                        return "#ccc";
                 }
             });
         } else {
@@ -210,10 +213,6 @@ var yScale = d3.scaleLinear()
             }
         });
         
-        
-        
-    
-    
         console.log("Domain Array:", domainArray); // Log the domainArray for debugging
     
         if (domainArray.length === 0) {
@@ -256,6 +255,9 @@ var yScale = d3.scaleLinear()
                 } else {
                     return "#ccc";
                 }
+            })
+            .on("mouseover", function(event, d){
+                highlight(d.expressed)
             });
         console.log("Census tracts appended to map:", newunit); // Check if census tracts are appended
     }
@@ -315,6 +317,9 @@ var yScale = d3.scaleLinear()
             })
             .style("fill", function (d) {
                 return colorScale(d[expressed]);
+            })
+            .on("mouseover", function(event, d){
+                highlight(d);
             });
 
 
@@ -344,14 +349,20 @@ var yScale = d3.scaleLinear()
     
         // Update bars
         bars
-            .transition()
-            .duration(1000) // Add transition for smooth update
+            .sort(function(a, b){
+                return b[expressed] - a[expressed];
+            })
+            .transition() //add animation
+            .delay(function(d, i){
+                return i * 20
+            })
+            .duration(500)
             .attr("x", function(d, i) {
                 return i * barWidth + leftPadding;
             })
             .attr("width", barWidth)
             .attr("height", function(d, i) {
-                return 463 - yScale(parseFloat(d[expressed]));
+                return 500 - yScale(parseFloat(d[expressed]));
             })
             .attr("y", function(d, i) {
                 return yScale(parseFloat(d[expressed])) + topBottomPadding;
@@ -375,6 +386,19 @@ var yScale = d3.scaleLinear()
         // Update chart title
         d3.select(".chartTitle")
             .text("Total " + expressed + " per Census Tract");
+    };
+
+    function highlight(props) {
+        // Access the GEOID property from the properties object
+        var GEOID = props.tract.properties.GEOID; // Assuming GEOID is directly under properties
+        
+        // Construct a valid class selector using GEOID
+        var selector = "." + GEOID;
+    
+        // Select elements based on the class selector
+        var selected = d3.selectAll(selector)
+            .style("stroke", "blue")
+            .style("stroke-width", "2");
     }
     
 
