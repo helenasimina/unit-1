@@ -1,7 +1,21 @@
 (function () {
     //pseudo-global variables
-    var attrArray = ["mean_totin", "mean_cars", "sum_carshz", "mean_trkdm", "Point_Coun", "Percent Below Poverty Line", "Total Population", "White-Alone", "Black-Alone"]; // List of attributes to join from CSV
+    var attrArray = ["mean_totin", "mean_cars", "mean_cars", "sum_carshz", "mean_trkdm", "Point_Coun", "Percent Below Poverty Line", "Total Population", "White-Alone", "Black-Alone"]; // List of attributes to join from CSV
     var expressed = attrArray[5]; //initial attribute
+    //chart frame dimensions
+    var chartWidth = window.innerWidth * 0.405,
+        chartHeight = 500,
+        leftPadding = 10,
+        rightPadding = 2,
+        topBottomPadding = 5,
+        chartInnerWidth = chartWidth - leftPadding - rightPadding,
+        chartInnerHeight = chartHeight - topBottomPadding * 2,
+        translate = "translate(" + leftPadding + "," + topBottomPadding + ")";
+
+//create a scale to size bars proportionally to frame and for axis
+var yScale = d3.scaleLinear()
+    .range([463, 0])
+    .domain([0, 110]);
 
     window.onload = setMap();
 
@@ -18,12 +32,12 @@
             .attr("width", width)
             .attr("height", height);
 
-        //create Albers equal area conic projection centered on France
+        //create Albers equal area conic projection centered on Wisconsin
         var projection = d3.geoAlbers()
-            .center([-8.5, 44.8])
-            .rotate([81, 0, 0])
-            .parallels([25.20, 45.5])
-            .scale(3200.60)
+            .center([0.25, 44.8])
+            .rotate([90, 0, 0])
+            .parallels([25.80, 45.5])
+            .scale(4300.60)
             .translate([width / 2, height / 2]);
 
         var path = d3.geoPath()
@@ -82,20 +96,20 @@
         
             setEnumerationUnits(Wisconsin, map, path, colorScale);
             setChart(csvData, colorScale);
-            createDropdown(); // Move this function call here
+            createDropdown(csvData, Wisconsin); // Move this function call here
             console.log("here are:", wisconsintracts);
         }
         
     };
 
     // Function to create dropdown menu
-    function createDropdown() {
+    function createDropdown(csvData, Wisconsin) {
         //add select element
         var dropdown = d3.select("body")
             .append("select")
             .attr("class", "dropdown")
             .on("change", function () {
-                changeAttribute(this.value, csvData)
+                changeAttribute(this.value, csvData, Wisconsin)
             });
 
         //add initial option
@@ -114,14 +128,12 @@
     };
 
     // Function to change attribute
-    function changeAttribute(attribute, csvData) {
+    function changeAttribute(attribute, filteredData, Wisconsin) {
         // Change the expressed attribute
         expressed = attribute;
-        console.log("Expressed attribute in changeAttribute:", expressed); // Log the current expressed attribute
 
-    
         // Recreate the color scale
-        var colorScale = makeColorScale(csvData);
+        var colorScale = makeColorScale(Wisconsin);
     
         // Recolor enumeration units
         if (colorScale) { // Check if colorScale is defined
@@ -136,7 +148,35 @@
         } else {
             console.error("Color scale is undefined."); // Log an error if colorScale is undefined
         }
-    }
+
+         //Sort, resize, and recolor bars
+        var bars = d3.selectAll(".bar")
+            //Sort bars
+            .sort(function(a, b){
+                return b[expressed] - a[expressed];
+            })
+            .attr("x", function(d, i){
+                return i * (chartInnerWidth / filteredData.length) + leftPadding;
+            })
+            //resize bars
+            .attr("height", function(d, i){
+                return 463 - yScale(parseFloat(d[expressed]));
+            })
+            .attr("y", function(d, i){
+                return yScale(parseFloat(d[expressed])) + topBottomPadding;
+            })
+            //recolor bars
+            .style("fill", function(d){            
+                var value = d[expressed];            
+                if(value) {                
+                    return colorScale(value);            
+                } else {                
+                    return "#ccc";            
+                }    
+        });
+
+        updateChart(bars, filteredData.length, colorScale, filteredData);
+    };
     
     function makeColorScale(witractsData) {
         console.log("witractsData:", witractsData); // Log the data array for debugging
@@ -222,18 +262,15 @@
 
     // Function to create the chart
     function setChart(csvData, colorScale) {
-        //chart frame dimensions
-        var chartWidth = window.innerWidth * 0.405,
-            chartHeight = 500;
 
         // Define margins for the chart
-        var margin = { top: 20, right: 20, bottom: 30, left: 40 },
+        var margin = { top: 20, right: 20, bottom: 30, left: 35 },
             width = chartWidth - margin.left - margin.right,
             height = chartHeight - margin.top - margin.bottom;
 
         // Filter the data to exclude points with zero values
         var filteredData = csvData.filter(function (d) {
-            return d.Point_Coun > 0; // Adjust this condition based on your data structure
+            return d[expressed] > 0; // Adjust this condition based on your data structure
         });
 
         // Sort the filtered data array based on the expressed attribute in descending order
@@ -255,17 +292,20 @@
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+        // Define the width of each bar based on the number of data points
+        var barWidth = chartInnerWidth / filteredData.length;
+
         // Append bars to the chart
         var bars = chart.selectAll(".bars")
             .data(filteredData)
             .enter()
             .append("rect")
-            .attr("class", function (d) {
-                return "bars " + d.GEOID;
+            .attr("class", function(d){
+                return "bar " + d.GEOID;
             })
-            .attr("width", Math.max(width / filteredData.length - 1, 0))
+            .attr("width", (width - leftPadding) / filteredData.length) // Adjusted width calculation
             .attr("x", function (d, i) {
-                return i * (width / filteredData.length);
+                return i * barWidth + leftPadding; // Adjusted x-position calculation
             })
             .attr("height", function (d) {
                 return height - yScale(parseFloat(d[expressed]));
@@ -277,8 +317,9 @@
                 return colorScale(d[expressed]);
             });
 
+
         // Append y-axis to the left side of the chart
-        var yAxis = d3.axisLeft(yScale);
+        var yAxis = d3.axisLeft(yScale)
 
         chart.append("g")
             .attr("class", "y-axis")
@@ -288,7 +329,54 @@
             .attr("x", 20)
             .attr("y", 0 - margin.top / 15)
             .attr("class", "chartTitle")
-            .text("Total Train Derailments per Census Tract in 2020");
+            .text("Total " + expressed[3] + " per Census Tract");
+        
+        updateChart(bars, filteredData.length, colorScale, filteredData);
     }
+    function updateChart(bars, n, colorScale, filteredData) {
+        // Calculate the width of each bar dynamically based on the number of data points
+        var barWidth = (chartInnerWidth - leftPadding) / n;
+    
+        // Update y-axis scale domain based on the maximum value of the expressed attribute
+        yScale.domain([0, d3.max(filteredData, function(d) {
+            return parseFloat(d[expressed]);
+        })]);
+    
+        // Update bars
+        bars
+            .transition()
+            .duration(1000) // Add transition for smooth update
+            .attr("x", function(d, i) {
+                return i * barWidth + leftPadding;
+            })
+            .attr("width", barWidth)
+            .attr("height", function(d, i) {
+                return 463 - yScale(parseFloat(d[expressed]));
+            })
+            .attr("y", function(d, i) {
+                return yScale(parseFloat(d[expressed])) + topBottomPadding;
+            })
+            .style("fill", function(d) {
+                var value = d[expressed];
+                if (value) {
+                    return colorScale(value);
+                } else {
+                    return "#ccc";
+                }
+            });
+    
+        // Update y-axis
+        var yAxis = d3.axisLeft(yScale);
+        d3.select(".y-axis")
+            .transition()
+            .duration(1000) // Add transition for smooth update
+            .call(yAxis);
+    
+        // Update chart title
+        d3.select(".chartTitle")
+            .text("Total " + expressed + " per Census Tract");
+    }
+    
+
 
 })();
